@@ -1,0 +1,310 @@
+{
+  "folders": [
+    {
+      "name": "webview2",
+      "path": "stremio-webview-reworked"
+    },
+    {
+      "name": "frontend-reworked",
+      "path": "stremio-frontend-reworked"
+    }
+  ],
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "CONFIGURE AMD BUILD WEBVIEW2 (DEBUG)",
+        "type": "shell",
+        "command": "call \"${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders\\Common7\\Tools\\VsDevCmd.bat\" -arch=amd64 && cmake -S ${workspaceFolder:webview2} -B ${workspaceFolder:webview2}/build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=${workspaceFolder:webview2}/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build ${workspaceFolder:webview2}/build --config Debug",
+        "options": {
+          "shell": {
+            "executable": "cmd.exe",
+            "args": ["/d", "/c"]
+          },
+          "env": {
+            "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
+          }
+        },
+        "problemMatcher": ["$msCompile"]
+      },
+      {
+        "label": "RUN FRONTEND",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": { "cwd": "${workspaceFolder:frontend}" },
+        "isBackground": true,
+        "problemMatcher": {
+          "pattern": {
+            "regexp": ".*Ready in.*",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".*Next.js.*",
+            "endsPattern": ".*Ready in.*"
+          }
+        }
+      },
+
+      {
+        "label": "FRONTEND+WEBVIEW2 PIPE (DEBUG)",
+        "dependsOrder": "sequence",
+        "dependsOn": ["CONFIGURE AMD BUILD WEBVIEW2 (DEBUG)", "RUN FRONTEND"]
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug Webview2",
+        "type": "cppvsdbg",
+        "request": "launch",
+        "program": "${workspaceFolder:webview2}/build/Stremato.exe",
+        "args": [],
+        "cwd": "${workspaceFolder:webview2}",
+        "console": "internalConsole",
+        "preLaunchTask": "FRONTEND+WEBVIEW2 PIPE (DEBUG)",
+        "environment": [
+          {
+            "name": "PATH",
+            "value": "${workspaceFolder:webview2}/deps/libmpv/x86_64;${workspaceFolder:webview2}/deps/discord-rpc/win64-static/lib;${env:PATH}"
+          },
+          {
+            "name": "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "value": "--remote-debugging-port=9222 --ignore-certificate-errors"
+          }
+        ],
+        "stopAtEntry": false,
+        "logging": {
+          "moduleLoad": false,
+          "exceptions": false,
+          "programOutput": true
+        }
+      },
+      {
+        "name": "REACT_DEVTOOLS",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npx",
+        "runtimeArgs": ["react-devtools", "--port", "8097"],
+        "cwd": "${workspaceFolder:frontend}",
+        "console": "integratedTerminal",
+        "presentation": { "hidden": true }
+      },
+      {
+        "name": "Debug Frontend",
+        "type": "msedge",
+        "request": "attach",
+        "port": 9222,
+        "url": "https://localhost:3000/*",
+        "webRoot": "${workspaceFolder:frontend}",
+        "sourceMaps": true,
+        "sourceMapPathOverrides": {
+          "webpack://_N_E/*": "${webRoot}/*",
+          "webpack://*": "${webRoot}/*",
+          "/_next/*": "${webRoot}/.next/*",
+          "meteor://app/*": "${webRoot}/*"
+        },
+        "timeout": 30000,
+        "trace": true,
+        "presentation": { "hidden": true }
+      }
+    ],
+    "compounds": [
+      {
+        "name": "💯 Frontend",
+        "configurations": ["Debug Webview2", "Debug Frontend"],
+        "presentation": { "hidden": false, "group": "compounds", "order": 2 },
+        "stopAll": false
+      }
+    ]
+  },
+
+  "settings": {
+    "python.analysis.autoImportCompletions": true,
+    "workbench.editor.enablePreview": true,
+    "files.autoSave": "onFocusChange",
+    "git.openRepositoryInParentFolders": "always",
+    "files.exclude": {
+      "**/.git": true,
+      "**/node_modules": true,
+      "**/.DS_Store": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.venv": true,
+      "**/media": true,
+      "**/node_modules/**": true,
+      "**/.git/**": true,
+      "**/dist/**": true,
+      "vcpkg_installed": true,
+      "vcpkg": true,
+      "**/__init__.py": true
+    },
+    "C_Cpp.default.includePath": [
+      "${workspaceFolder:webview2}/deps/**",
+      "${workspaceFolder:webview2}/**",
+      "${workspaceFolder:webview2}/vcpkg/packages/**/include/**",
+      "${workspaceFolder:webview2}/vcpkg/packages/wil_x64-windows/include/**",
+      "${workspaceFolder:webview2}/build/vcpkg_installed/x64-windows/include/**",
+      "${env:ProgramFiles}/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.50.35702/include/**"
+    ],
+    "C_Cpp.default.defines": ["_DEBUG", "UNICODE", "_UNICODE"],
+    "C_Cpp.default.windowsSdkVersion": "10.0.26100.0",
+    "C_Cpp.default.compilerPath": "${env:ProgramFiles}/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.50.35702/bin/Hostx64/x64/cl.exe",
+    "C_Cpp.default.cStandard": "c23",
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+    "editor.formatOnSave": true,
+    "cmake.sourceDirectory": "${workspaceFolder:webview2}",
+    "cmake.useCMakePresets": "auto",
+    "cmake.configureOnOpen": true,
+    "cmake.buildBeforeRun": true,
+    "files.watcherExclude": {
+      "**/WEBVIEW_APP/build/**": true,
+      "**/WEBVIEW_APP/vcpkg/**": true,
+      "**/vcpkg_installed/**": true,
+      "**/build/**": true,
+      "**/pkg/mod/**": true
+    },
+    "search.exclude": {
+      "**/build/**": true,
+      "**/vcpkg/**": true,
+      "**/vcpkg_installed/**": true,
+      "**/pkg/mod": true
+    },
+    "C_Cpp.files.exclude": {
+      "**/build/**/*": true,
+      "**/vcpkg_installed/**": true,
+      "**/pkg/mod": true
+    },
+    "cmake.configureSettings": {
+      "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+      "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder:webview2}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "VCPKG_TARGET_TRIPLET": "x64-windows"
+    },
+    "terminal.integrated.env.windows": {
+      "VCPKG_VISUAL_STUDIO_PATH": "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders"
+    },
+    "files.associations": {
+      "*.erd": "json",
+      "*.vuerd": "json",
+      "*.json": "jsonc",
+      "iostream": "cpp",
+      "any": "cpp",
+      "array": "cpp",
+      "atomic": "cpp",
+      "barrier": "cpp",
+      "bit": "cpp",
+      "bitset": "cpp",
+      "cctype": "cpp",
+      "cfenv": "cpp",
+      "charconv": "cpp",
+      "chrono": "cpp",
+      "cinttypes": "cpp",
+      "clocale": "cpp",
+      "cmath": "cpp",
+      "codecvt": "cpp",
+      "compare": "cpp",
+      "complex": "cpp",
+      "concepts": "cpp",
+      "condition_variable": "cpp",
+      "coroutine": "cpp",
+      "csetjmp": "cpp",
+      "csignal": "cpp",
+      "cstdarg": "cpp",
+      "cstddef": "cpp",
+      "cstdint": "cpp",
+      "cstdio": "cpp",
+      "cstdlib": "cpp",
+      "cstring": "cpp",
+      "ctime": "cpp",
+      "cuchar": "cpp",
+      "cwchar": "cpp",
+      "cwctype": "cpp",
+      "deque": "cpp",
+      "forward_list": "cpp",
+      "list": "cpp",
+      "map": "cpp",
+      "set": "cpp",
+      "string": "cpp",
+      "unordered_map": "cpp",
+      "unordered_set": "cpp",
+      "vector": "cpp",
+      "exception": "cpp",
+      "expected": "cpp",
+      "algorithm": "cpp",
+      "functional": "cpp",
+      "iterator": "cpp",
+      "memory": "cpp",
+      "memory_resource": "cpp",
+      "netfwd": "cpp",
+      "numeric": "cpp",
+      "optional": "cpp",
+      "random": "cpp",
+      "ratio": "cpp",
+      "regex": "cpp",
+      "source_location": "cpp",
+      "string_view": "cpp",
+      "system_error": "cpp",
+      "tuple": "cpp",
+      "type_traits": "cpp",
+      "utility": "cpp",
+      "rope": "cpp",
+      "slist": "cpp",
+      "format": "cpp",
+      "fstream": "cpp",
+      "future": "cpp",
+      "initializer_list": "cpp",
+      "iomanip": "cpp",
+      "iosfwd": "cpp",
+      "istream": "cpp",
+      "latch": "cpp",
+      "limits": "cpp",
+      "mutex": "cpp",
+      "new": "cpp",
+      "numbers": "cpp",
+      "ostream": "cpp",
+      "ranges": "cpp",
+      "scoped_allocator": "cpp",
+      "semaphore": "cpp",
+      "shared_mutex": "cpp",
+      "span": "cpp",
+      "spanstream": "cpp",
+      "sstream": "cpp",
+      "stacktrace": "cpp",
+      "stdexcept": "cpp",
+      "stdfloat": "cpp",
+      "stop_token": "cpp",
+      "streambuf": "cpp",
+      "syncstream": "cpp",
+      "thread": "cpp",
+      "typeindex": "cpp",
+      "typeinfo": "cpp",
+      "valarray": "cpp",
+      "variant": "cpp",
+      "*.inc": "cpp",
+      "xstring": "cpp",
+      "filesystem": "cpp",
+      "ios": "cpp",
+      "locale": "cpp",
+      "xfacet": "cpp",
+      "xhash": "cpp",
+      "xiosbase": "cpp",
+      "xlocale": "cpp",
+      "xlocbuf": "cpp",
+      "xlocinfo": "cpp",
+      "xlocmes": "cpp",
+      "xlocmon": "cpp",
+      "xlocnum": "cpp",
+      "xloctime": "cpp",
+      "xmemory": "cpp",
+      "xstddef": "cpp",
+      "xtr1common": "cpp",
+      "xtree": "cpp",
+      "xutility": "cpp"
+    }
+  }
+}
