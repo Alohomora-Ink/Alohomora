@@ -1,6 +1,9 @@
 [submodule "stremio-webview-reworked"]
 	path = stremio-webview-reworked
 	url = https://github.com/Alohomora-Ink/stremio-webview-reworked.git
+	branch = main
+
 [submodule "stremio-frontend-reworked"]
 	path = stremio-frontend-reworked
 	url = https://github.com/Alohomora-Ink/stremio-frontend-reworked.git
+	branch = main
