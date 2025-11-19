@@ -5,7 +5,7 @@
       "path": "stremio-webview-reworked"
     },
     {
-      "name": "frontend-reworked",
+      "name": "frontend",
       "path": "stremio-frontend-reworked"
     }
   ],
@@ -13,7 +13,7 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "CONFIGURE AMD BUILD WEBVIEW2 (DEBUG)",
+        "label": "CONFIGURE_AND_BUILD_WEBVIEW2_DEBUG",
         "type": "shell",
         "command": "call \"${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders\\Common7\\Tools\\VsDevCmd.bat\" -arch=amd64 && cmake -S ${workspaceFolder:webview2} -B ${workspaceFolder:webview2}/build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=${workspaceFolder:webview2}/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build ${workspaceFolder:webview2}/build --config Debug",
         "options": {
@@ -28,45 +28,76 @@
         "problemMatcher": ["$msCompile"]
       },
       {
-        "label": "RUN FRONTEND",
+        "label": "AWAIT_NEXT_JS_CLIENT_SIDE_DEBUG_TARGET",
+        "promptOnClose": false,
         "type": "shell",
-        "command": "npm run dev",
-        "options": { "cwd": "${workspaceFolder:frontend}" },
-        "isBackground": true,
-        "problemMatcher": {
-          "pattern": {
-            "regexp": ".*Ready in.*",
-            "file": 1,
-            "location": 2,
-            "message": 3
-          },
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".*Next.js.*",
-            "endsPattern": ".*Ready in.*"
-          }
-        }
+        "presentation": {
+          "reveal": "silent",
+          "panel": "shared"
+        },
+        "problemMatcher": [],
+        "command": "powershell",
+        "args": [
+          "-NoLogo",
+          "-NoProfile",
+          "-EncodedCommand",
+          "WwBTAHkAcwB0AGUAbQAuAE4AZQB0AC4AUwBlAHIAdgBpAGMAZQBQAG8AaQBuAHQATQBhAG4AYQBnAGUAcgBdADoAOgBTAGUAcgB2AGUAcgBDAGUAcgB0AGkAZgBpAGMAYQB0AGUAVgBhAGwAaQBkAGEAdABpAG8AbgBDAGEAbABsAGIAYQBjAGsAIAA9ACAAewAkAHQAcgB1AGUAfQA="
+        ],
+        "dependsOn": ["CLEAN_EDGE_DEBUG_PROFILE"]
       },
-
       {
-        "label": "FRONTEND+WEBVIEW2 PIPE (DEBUG)",
-        "dependsOrder": "sequence",
-        "dependsOn": ["CONFIGURE AMD BUILD WEBVIEW2 (DEBUG)", "RUN FRONTEND"]
+        "label": "AWAIT_VSCODE_EDGE_DEVTOOLS_DEBBUGER_TARGET",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-NoLogo",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          "$target = 'https://localhost:3000'; $i = 0; while ($i -lt 120) { try { $resp = Invoke-RestMethod 'http://127.0.0.1:9222/json/list' -ErrorAction Stop; if (($resp | ConvertTo-Json -Depth 5) -match $target) { break } } catch { } Start-Sleep -Milliseconds 250; $i++ }; exit 0"
+        ],
+        "presentation": {
+          "reveal": "silent",
+          "panel": "dedicated",
+          "showReuseMessage": false
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "CLEAN_EDGE_DEBUG_PROFILE",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-NoLogo",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          "if (Test-Path -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\") { Remove-Item -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\" -Recurse -Force } ; exit 0"
+        ],
+        "presentation": {
+          "reveal": "silent",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "problemMatcher": []
       }
     ]
   },
   "launch": {
     "version": "0.2.0",
     "configurations": [
+      // WEBVIEW2_CPP_DEBUG
       {
-        "name": "Debug Webview2",
+        "name": "WEBVIEW2_CPP_DEBUG",
         "type": "cppvsdbg",
         "request": "launch",
         "program": "${workspaceFolder:webview2}/build/Stremato.exe",
         "args": [],
         "cwd": "${workspaceFolder:webview2}",
         "console": "internalConsole",
-        "preLaunchTask": "FRONTEND+WEBVIEW2 PIPE (DEBUG)",
+        "preLaunchTask": "CONFIGURE_AND_BUILD_WEBVIEW2_DEBUG",
         "environment": [
           {
             "name": "PATH",
@@ -77,6 +108,7 @@
             "value": "--remote-debugging-port=9222 --ignore-certificate-errors"
           }
         ],
+        "presentation": { "hidden": true },
         "stopAtEntry": false,
         "logging": {
           "moduleLoad": false,
@@ -84,6 +116,138 @@
           "programOutput": true
         }
       },
+      // FRONTEND_SERVER_SIDE_DEBUG
+      {
+        "name": "FRONTEND_SERVER_SIDE_DEBUG",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": ["run", "dev"],
+        "cwd": "${workspaceFolder:frontend}",
+        "console": "integratedTerminal",
+        "env": {
+          "NODE_ENV": "development"
+          // "NODE_OPTIONS": "--inspect=9229"
+        },
+        "autoAttachChildProcesses": true,
+        "internalConsoleOptions": "neverOpen",
+        "skipFiles": [
+          "<node_internals>/**",
+          "${workspaceFolder:frontend}/node_modules/**",
+          "${workspaceFolder:frontend}/.next/**",
+          "${workspaceFolder:frontend}/.vscode/**"
+        ],
+        "presentation": { "hidden": true }
+      },
+      // FRONTEND_CLIENT_SIDE_DEBUG
+      {
+        "name": "FRONTEND_CLIENT_SIDE_DEBUG",
+        "type": "msedge",
+        "request": "launch",
+        "preLaunchTask": "AWAIT_NEXT_JS_CLIENT_SIDE_DEBUG_TARGET",
+        "url": "https://localhost:3000",
+        "runtimeExecutable": "${env:ProgramFiles(x86)}\\Microsoft\\Edge\\Application\\msedge.exe",
+        "userDataDir": "${env:USERPROFILE}\\EdgeDebugProfiles\\stremio-frontend-reworked-profile",
+        "runtimeArgs": [
+          "--remote-debugging-port=9222",
+          "--new-window",
+          "--disable-extensions"
+        ],
+        "webRoot": "${workspaceFolder:frontend}",
+        "sourceMaps": true,
+        "sourceMapPathOverrides": {
+          "webpack://_N_E/./src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack://_N_E/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack://_N_E/node_modules/*": "${workspaceFolder:frontend}/node_modules/*",
+          "webpack://client/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///./src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///*": "*",
+          "webpack:///./~/*": "${workspaceFolder:frontend}/node_modules/*"
+        },
+        "skipFiles": [
+          "<node_internals>/**",
+          "${workspaceFolder:frontend}/node_modules/**"
+        ],
+        "presentation": { "hidden": true },
+        "trace": true
+      },
+      // FRONTEND_CLIENT_SIDE_HEADLESS_DEBUG
+      {
+        "name": "FRONTEND_CLIENT_SIDE_HEADLESS_DEBUG",
+        "type": "msedge",
+        "request": "launch",
+        "preLaunchTask": "AWAIT_NEXT_JS_CLIENT_SIDE_DEBUG_TARGET",
+        "url": "https://localhost:3000",
+        "runtimeExecutable": "${env:ProgramFiles(x86)}\\Microsoft\\Edge\\Application\\msedge.exe",
+        "userDataDir": "${env:USERPROFILE}\\EdgeDebugProfiles\\stremio-frontend-reworked-profile",
+        "runtimeArgs": [
+          "--headless=new",
+          "--remote-debugging-port=9222",
+          "--new-window",
+          "--disable-extensions",
+          "--ignore-certificate-errors"
+        ],
+        "webRoot": "${workspaceFolder:frontend}",
+        "sourceMaps": true,
+        "sourceMapPathOverrides": {
+          "webpack://_N_E/./src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack://_N_E/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack://_N_E/node_modules/*": "${workspaceFolder:frontend}/node_modules/*",
+          "webpack://client/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///./src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///*": "*",
+          "webpack:///./~/*": "${workspaceFolder:frontend}/node_modules/*"
+        },
+        "skipFiles": [
+          "<node_internals>/**",
+          "${workspaceFolder:frontend}/node_modules/**",
+          "${workspaceFolder:frontend}/.next/**"
+        ],
+        "presentation": { "hidden": true },
+        "trace": true
+      },
+      // AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS
+      {
+        "name": "AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS",
+        "type": "vscode-edge-devtools.debug",
+        "request": "launch",
+        "preLaunchTask": "AWAIT_VSCODE_EDGE_DEVTOOLS_DEBBUGER_TARGET",
+        "url": "https://localhost:3000",
+        "presentation": {
+          "hidden": true
+        }
+      },
+      // FRONTEND_CLIENT_SIDE_WEBVIEW2_ATTACH
+      {
+        "name": "FRONTEND_CLIENT_SIDE_WEBVIEW2_ATTACH",
+        "type": "msedge",
+        "request": "attach",
+        "port": 9222,
+        "urlFilter": "https://localhost:3000/*",
+        "preLaunchTask": "AWAIT_VSCODE_EDGE_DEVTOOLS_DEBBUGER_TARGET",
+        "webRoot": "${workspaceFolder:frontend}",
+        "sourceMaps": true,
+        "sourceMapPathOverrides": {
+          "webpack:///./.next/*": "${workspaceFolder:frontend}/.next/*",
+          "webpack:///./.next/server/*": "${workspaceFolder:frontend}/.next/server/*",
+          "webpack:///./.next/static/*": "${workspaceFolder:frontend}/.next/static/*",
+          "file:///C:/Git/*": "${workspaceFolder:frontend}/*",
+          "file:///c:/Git/*": "${workspaceFolder:frontend}/*",
+          "c:/Git/*": "${workspaceFolder:frontend}/*",
+          "/C:/Git/*": "${workspaceFolder:frontend}/*",
+          "webpack:///./~/*": "${workspaceFolder:frontend}/node_modules/*",
+          "webpack:///./*": "${workspaceFolder:frontend}/*",
+          "webpack://_N_E/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack://_N_E/node_modules/*": "${workspaceFolder:frontend}/node_modules/*",
+          "webpack://client/src/*": "${workspaceFolder:frontend}/src/*",
+          "webpack:///src/*": "${workspaceFolder:frontend}/src/*",
+          "C:/Git/*": "C:/Git/*"
+        },
+        "presentation": { "hidden": true }
+      },
+      // REACT_DEVTOOLS
       {
         "name": "REACT_DEVTOOLS",
         "type": "node",
@@ -93,32 +257,45 @@
         "cwd": "${workspaceFolder:frontend}",
         "console": "integratedTerminal",
         "presentation": { "hidden": true }
-      },
-      {
-        "name": "Debug Frontend",
-        "type": "msedge",
-        "request": "attach",
-        "port": 9222,
-        "url": "https://localhost:3000/*",
-        "webRoot": "${workspaceFolder:frontend}",
-        "sourceMaps": true,
-        "sourceMapPathOverrides": {
-          "webpack://_N_E/*": "${webRoot}/*",
-          "webpack://*": "${webRoot}/*",
-          "/_next/*": "${webRoot}/.next/*",
-          "meteor://app/*": "${webRoot}/*"
-        },
-        "timeout": 30000,
-        "trace": true,
-        "presentation": { "hidden": true }
       }
     ],
     "compounds": [
       {
-        "name": "💯 Frontend",
-        "configurations": ["Debug Webview2", "Debug Frontend"],
-        "presentation": { "hidden": false, "group": "compounds", "order": 2 },
+        "name": "WEBVIEW_FRONTEND_DEBUG",
+        "configurations": [
+          "WEBVIEW2_CPP_DEBUG",
+          "FRONTEND_SERVER_SIDE_DEBUG",
+          "FRONTEND_CLIENT_SIDE_WEBVIEW2_ATTACH"
+        ],
+        "presentation": {
+          "hidden": false,
+          "group": "WEBVIEW_FRONTEND_DEBUG",
+          "order": 2
+        },
         "stopAll": false
+      },
+      {
+        "name": "FRONTEND_DEBUG_FS_EDGE_EXTERNAL",
+        "configurations": [
+          "FRONTEND_SERVER_SIDE_DEBUG",
+          "FRONTEND_CLIENT_SIDE_DEBUG"
+        ],
+        "presentation": {
+          "group": "FRONTEND_DEBUG",
+          "order": 1
+        }
+      },
+      {
+        "name": "FRONTEND_DEBUG_FS_VS_DEVTOOLS",
+        "configurations": [
+          "FRONTEND_SERVER_SIDE_DEBUG",
+          "FRONTEND_CLIENT_SIDE_HEADLESS_DEBUG",
+          "AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS"
+        ],
+        "presentation": {
+          "group": "FRONTEND_DEBUG",
+          "order": 1
+        }
       }
     ]
   },
@@ -135,7 +312,7 @@
       "**/__pycache__": true,
       "**/.pytest_cache": true,
       "**/.venv": true,
-      "**/media": true,
+      // "**/media": true,
       "**/node_modules/**": true,
       "**/.git/**": true,
       "**/dist/**": true,
@@ -186,7 +363,7 @@
       "VCPKG_TARGET_TRIPLET": "x64-windows"
     },
     "terminal.integrated.env.windows": {
-      "VCPKG_VISUAL_STUDIO_PATH": "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders"
+      "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
     },
     "files.associations": {
       "*.erd": "json",
