@@ -301,7 +301,9 @@
   },
 
   "settings": {
-    "python.analysis.autoImportCompletions": true,
+    "webhint.hints": {
+      "compat-api/css": "off"
+    },
     "workbench.editor.enablePreview": true,
     "files.autoSave": "onFocusChange",
     "git.openRepositoryInParentFolders": "always",
@@ -366,6 +368,7 @@
       "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
     },
     "files.associations": {
+      "*.css": "tailwindcss",
       "*.erd": "json",
       "*.vuerd": "json",
       "*.json": "jsonc",
