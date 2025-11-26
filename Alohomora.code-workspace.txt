@@ -1,9 +1,9 @@
 {
   "folders": [
-    // {
-    //   "name": "webview2",
-    //   "path": "stremio-webview-reworked"
-    // },
+    {
+      "name": "webview2",
+      "path": "stremio-webview-reworked"
+    },
     {
       "name": "frontend",
       "path": "stremio-frontend-reworked"
@@ -28,23 +28,22 @@
         "problemMatcher": ["$msCompile"]
       },
       {
-        "label": "CLEAN_EDGE_DEBUG_PROFILE",
-        "type": "process",
-        "command": "powershell.exe",
-        "args": [
-          "-NoProfile",
-          "-NoLogo",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-Command",
-          "if (Test-Path -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\") { Remove-Item -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\" -Recurse -Force } ; exit 0"
-        ],
+        "label": "AWAIT_NEXT_JS_CLIENT_SIDE_DEBUG_TARGET",
+        "promptOnClose": false,
+        "type": "shell",
         "presentation": {
           "reveal": "silent",
-          "panel": "shared",
-          "showReuseMessage": false
+          "panel": "shared"
         },
-        "problemMatcher": []
+        "problemMatcher": [],
+        "command": "powershell",
+        "args": [
+          "-NoLogo",
+          "-NoProfile",
+          "-EncodedCommand",
+          "WwBTAHkAcwB0AGUAbQAuAE4AZQB0AC4AUwBlAHIAdgBpAGMAZQBQAG8AaQBuAHQATQBhAG4AYQBnAGUAcgBdADoAOgBTAGUAcgB2AGUAcgBDAGUAcgB0AGkAZgBpAGMAYQB0AGUAVgBhAGwAaQBkAGEAdABpAG8AbgBDAGEAbABsAGIAYQBjAGsAIAA9ACAAewAkAHQAcgB1AGUAfQA="
+        ],
+        "dependsOn": ["CLEAN_EDGE_DEBUG_PROFILE"]
       },
       {
         "label": "AWAIT_VSCODE_EDGE_DEVTOOLS_DEBBUGER_TARGET",
@@ -64,13 +63,32 @@
           "showReuseMessage": false
         },
         "problemMatcher": []
+      },
+      {
+        "label": "CLEAN_EDGE_DEBUG_PROFILE",
+        "type": "process",
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-NoLogo",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          "if (Test-Path -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\") { Remove-Item -LiteralPath \"$env:USERPROFILE\\EdgeDebugProfiles\\stremio-frontend-reworked-profile\" -Recurse -Force } ; exit 0"
+        ],
+        "presentation": {
+          "reveal": "silent",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "problemMatcher": []
       }
     ]
   },
   "launch": {
     "version": "0.2.0",
     "configurations": [
-      // WEBVIEW2_CPP_DEBUG (UNTOUCHED)
+      // WEBVIEW2_CPP_DEBUG
       {
         "name": "WEBVIEW2_CPP_DEBUG",
         "type": "cppvsdbg",
@@ -98,7 +116,7 @@
           "programOutput": true
         }
       },
-      // 1. SERVER SIDE (Node/Next.js) - FIXED (Removed invalid action)
+      // 1. SERVER SIDE (Node/Next.js)
       {
         "name": "FRONTEND_SERVER_SIDE_DEBUG",
         "type": "node",
@@ -108,6 +126,12 @@
         "cwd": "${workspaceFolder:frontend}",
         "console": "integratedTerminal",
         "env": { "NODE_ENV": "development" },
+        // This magically waits for the server to print "Ready" before launching the browser
+        "serverReadyAction": {
+          "pattern": "started server on .+, url: (https?://.+)",
+          "uriFormat": "%s",
+          "action": "debugWithChrome"
+        },
         "autoAttachChildProcesses": true,
         "skipFiles": [
           "<node_internals>/**",
@@ -117,6 +141,8 @@
         "presentation": { "hidden": false }
       },
       // 2. CLIENT SIDE (Edge External Window)
+      // Note: This is triggered automatically by 'serverReadyAction' above if you run the compound,
+      // but we keep it here for manual use or explicit compounding.
       {
         "name": "FRONTEND_CLIENT_SIDE_DEBUG",
         "type": "msedge",
@@ -126,11 +152,12 @@
         "userDataDir": "${env:USERPROFILE}\\EdgeDebugProfiles\\stremio-frontend-reworked-profile",
         "runtimeArgs": [
           "--remote-debugging-port=9222",
-          "--new-window"
-          // "--disable-extensions"
+          "--new-window",
+          "--disable-extensions"
         ],
         "webRoot": "${workspaceFolder:frontend}",
         "sourceMaps": true,
+        // Simplified Source Maps for Next.js App Router
         "sourceMapPathOverrides": {
           "webpack://_N_E/./*": "${workspaceFolder:frontend}/*",
           "webpack://_N_E/node_modules/*": "${workspaceFolder:frontend}/node_modules/*"
@@ -153,7 +180,7 @@
         "runtimeArgs": [
           "--headless=new",
           "--remote-debugging-port=9222",
-          // "--disable-extensions",
+          "--disable-extensions",
           "--ignore-certificate-errors"
         ],
         "webRoot": "${workspaceFolder:frontend}",
@@ -165,7 +192,7 @@
         "trace": false,
         "presentation": { "hidden": true }
       },
-      // AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS - FIXED (Removed preLaunchTask)
+      // AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS
       {
         "name": "AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS",
         "type": "vscode-edge-devtools.debug",
@@ -197,11 +224,10 @@
         "type": "node",
         "request": "launch",
         "runtimeExecutable": "npx",
-        "runtimeArgs": ["react-devtools"],
+        "runtimeArgs": ["react-devtools", "--port", "8097"],
         "cwd": "${workspaceFolder:frontend}",
         "console": "integratedTerminal",
-        "presentation": { "hidden": true },
-        "preLaunchTask": "AWAIT_VSCODE_EDGE_DEVTOOLS_DEBBUGER_TARGET"
+        "presentation": { "hidden": true }
       }
     ],
     "compounds": [
@@ -210,8 +236,7 @@
         "configurations": [
           "WEBVIEW2_CPP_DEBUG",
           "FRONTEND_SERVER_SIDE_DEBUG",
-          "FRONTEND_CLIENT_SIDE_WEBVIEW2_ATTACH",
-          "REACT_DEVTOOLS"
+          "FRONTEND_CLIENT_SIDE_WEBVIEW2_ATTACH"
         ],
         "presentation": {
           "hidden": false,
@@ -225,7 +250,6 @@
         "configurations": [
           "FRONTEND_SERVER_SIDE_DEBUG",
           "FRONTEND_CLIENT_SIDE_DEBUG"
-          // "REACT_DEVTOOLS"
         ],
         "presentation": {
           "group": "FRONTEND_DEBUG",
@@ -237,8 +261,7 @@
         "configurations": [
           "FRONTEND_SERVER_SIDE_DEBUG",
           "FRONTEND_CLIENT_SIDE_HEADLESS_DEBUG",
-          "AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS",
-          "REACT_DEVTOOLS"
+          "AUTO_ATTACH_VSCODE_EDGE_DEVTOOLS"
         ],
         "presentation": {
           "group": "FRONTEND_DEBUG",
@@ -247,6 +270,7 @@
       }
     ]
   },
+
   "settings": {
     "workbench.editor.enablePreview": true,
     "files.autoSave": "onFocusChange",
@@ -315,123 +339,7 @@
       "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
     },
     "files.associations": {
-      "*.css": "tailwindcss",
-      "*.erd": "json",
-      "*.vuerd": "json",
-      "*.json": "jsonc",
-      "iostream": "cpp",
-      "any": "cpp",
-      "array": "cpp",
-      "atomic": "cpp",
-      "barrier": "cpp",
-      "bit": "cpp",
-      "bitset": "cpp",
-      "cctype": "cpp",
-      "cfenv": "cpp",
-      "charconv": "cpp",
-      "chrono": "cpp",
-      "cinttypes": "cpp",
-      "clocale": "cpp",
-      "cmath": "cpp",
-      "codecvt": "cpp",
-      "compare": "cpp",
-      "complex": "cpp",
-      "concepts": "cpp",
-      "condition_variable": "cpp",
-      "coroutine": "cpp",
-      "csetjmp": "cpp",
-      "csignal": "cpp",
-      "cstdarg": "cpp",
-      "cstddef": "cpp",
-      "cstdint": "cpp",
-      "cstdio": "cpp",
-      "cstdlib": "cpp",
-      "cstring": "cpp",
-      "ctime": "cpp",
-      "cuchar": "cpp",
-      "cwchar": "cpp",
-      "cwctype": "cpp",
-      "deque": "cpp",
-      "forward_list": "cpp",
-      "list": "cpp",
-      "map": "cpp",
-      "set": "cpp",
-      "string": "cpp",
-      "unordered_map": "cpp",
-      "unordered_set": "cpp",
-      "vector": "cpp",
-      "exception": "cpp",
-      "expected": "cpp",
-      "algorithm": "cpp",
-      "functional": "cpp",
-      "iterator": "cpp",
-      "memory": "cpp",
-      "memory_resource": "cpp",
-      "netfwd": "cpp",
-      "numeric": "cpp",
-      "optional": "cpp",
-      "random": "cpp",
-      "ratio": "cpp",
-      "regex": "cpp",
-      "source_location": "cpp",
-      "string_view": "cpp",
-      "system_error": "cpp",
-      "tuple": "cpp",
-      "type_traits": "cpp",
-      "utility": "cpp",
-      "rope": "cpp",
-      "slist": "cpp",
-      "format": "cpp",
-      "fstream": "cpp",
-      "future": "cpp",
-      "initializer_list": "cpp",
-      "iomanip": "cpp",
-      "iosfwd": "cpp",
-      "istream": "cpp",
-      "latch": "cpp",
-      "limits": "cpp",
-      "mutex": "cpp",
-      "new": "cpp",
-      "numbers": "cpp",
-      "ostream": "cpp",
-      "ranges": "cpp",
-      "scoped_allocator": "cpp",
-      "semaphore": "cpp",
-      "shared_mutex": "cpp",
-      "span": "cpp",
-      "spanstream": "cpp",
-      "sstream": "cpp",
-      "stacktrace": "cpp",
-      "stdexcept": "cpp",
-      "stdfloat": "cpp",
-      "stop_token": "cpp",
-      "streambuf": "cpp",
-      "syncstream": "cpp",
-      "thread": "cpp",
-      "typeindex": "cpp",
-      "typeinfo": "cpp",
-      "valarray": "cpp",
-      "variant": "cpp",
-      "*.inc": "cpp",
-      "xstring": "cpp",
-      "filesystem": "cpp",
-      "ios": "cpp",
-      "locale": "cpp",
-      "xfacet": "cpp",
-      "xhash": "cpp",
-      "xiosbase": "cpp",
-      "xlocale": "cpp",
-      "xlocbuf": "cpp",
-      "xlocinfo": "cpp",
-      "xlocmes": "cpp",
-      "xlocmon": "cpp",
-      "xlocnum": "cpp",
-      "xloctime": "cpp",
-      "xmemory": "cpp",
-      "xstddef": "cpp",
-      "xtr1common": "cpp",
-      "xtree": "cpp",
-      "xutility": "cpp"
+  	<i redacted this>
     }
   }
 }
